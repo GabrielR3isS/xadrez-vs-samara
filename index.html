@@ -1,15 +1,83 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Xadrez vs Samara</title>
-  <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Como devo chamá-lo?</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #e6e8ec;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .container {
+      background-color: white;
+      padding: 30px 40px;
+      border-radius: 10px;
+      box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+
+    h2 {
+      margin-bottom: 20px;
+      color: #1a1a1a;
+    }
+
+    input[type="text"] {
+      padding: 10px;
+      width: 100%;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      margin-bottom: 20px;
+    }
+
+    button {
+      padding: 12px;
+      width: 100%;
+      background-color: #4a3ff2;
+      border: none;
+      border-radius: 6px;
+      color: white;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+
+    button:hover {
+      background-color: #372ee3;
+    }
+  </style>
 </head>
 <body>
-  <h1>Xadrez vs Samara</h1>
-  <div id="turn-indicator">Turno: <span id="current-turn">Brancas</span></div>
-  <div id="board" class="board"></div>
-  <script src="script.js"></script>
+  <div class="container">
+    <h2>Como devo chama-lo ?</h2>
+    <input type="text" id="nomeInput" placeholder="Digite seu nome">
+    <button id="continuarBtn">Continuar</button>
+  </div>
+
+  <script>
+    document.getElementById("continuarBtn").addEventListener("click", function() {
+      const nome = document.getElementById("nomeInput").value.trim();
+      if (nome === "") {
+        alert("Por favor, digite um nome.");
+      } else {
+        alert("Olá, " + nome + "!");
+        // Aqui você pode redirecionar ou salvar o nome se quiser
+        // window.location.href = "outra_pagina.html";
+      }
+    });
+  </script>
 </body>
 </html>

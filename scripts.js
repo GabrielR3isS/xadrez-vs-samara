@@ -1,102 +1,75 @@
-let selectedPiece = null;
-let selectedIndex = null;
-let currentTurn = 'white';
+document.addEventListener("DOMContentLoaded", () => {
+  const modal = document.getElementById("nameModal");
+  const continueBtn = document.getElementById("continueBtn");
+  const playerNameInput = document.getElementById("playerName");
+  const gameBoard = document.getElementById("gameBoard");
+  const turnIndicator = document.getElementById("turnIndicator");
+  const board = document.getElementById("board");
 
-const board = document.getElementById('board');
-const turnIndicator = document.getElementById('turn-indicator');
-const messageBox = document.getElementById('message-box');
-const messageText = document.getElementById('message-text');
-const continueButton = document.getElementById('continue-button');
+  let selectedPiece = null;
+  let currentPlayer = "P1";
 
-const pieces = [
-  "♜","♞","♝","♛","♚","♝","♞","♜",
-  "♟","♟","♟","♟","♟","♟","♟","♟",
-  "","","","","","","","",
-  "","","","","","","","",
-  "","","","","","","","",
-  "","","","","","","","",
-  "♙","♙","♙","♙","♙","♙","♙","♙",
-  "♖","♘","♗","♕","♔","♗","♘","♖"
-];
-
-function createBoard() {
-  board.innerHTML = "";
-  for (let i = 0; i < 64; i++) {
-    const square = document.createElement('div');
-    square.classList.add('square');
-    square.classList.add((Math.floor(i / 8) + i) % 2 === 0 ? 'white' : 'black');
-    square.dataset.index = i;
-    square.innerHTML = pieces[i];
-    board.appendChild(square);
-  }
-}
-
-function handleSquareClick(e) {
-  const square = e.target;
-  if (!square.classList.contains('square')) return;
-
-  const index = parseInt(square.dataset.index);
-  const piece = pieces[index];
-
-  if (selectedPiece === null) {
-    if (
-      (currentTurn === 'white' && "♙♖♘♗♕♔".includes(piece)) ||
-      (currentTurn === 'black' && "♟♜♞♝♛♚".includes(piece))
-    ) {
-      selectedPiece = piece;
-      selectedIndex = index;
-      square.style.border = '2px solid yellow';
+  // Cria o tabuleiro
+  function createBoard() {
+    board.innerHTML = "";
+    for (let i = 0; i < 64; i++) {
+      const square = document.createElement("div");
+      square.className = "square";
+      square.dataset.index = i;
+      if (i < 8) square.textContent = "P1";
+      if (i >= 56) square.textContent = "P2";
+      board.appendChild(square);
     }
-  } else {
-    movePiece(selectedIndex, index);
-    selectedPiece = null;
-    selectedIndex = null;
-    resetBorders();
+  }
+
+  // Atualiza o painel de turno
+  function updateTurnIndicator() {
+    turnIndicator.textContent = `Vez do jogador: ${currentPlayer}`;
+  }
+
+  // Alterna turno
+  function switchTurn() {
+    currentPlayer = currentPlayer === "P1" ? "P2" : "P1";
     updateTurnIndicator();
   }
-}
 
-function movePiece(from, to) {
-  pieces[to] = pieces[from];
-  pieces[from] = "";
-  createBoard();
-  triggerScareMessage();
-  currentTurn = currentTurn === 'white' ? 'black' : 'white';
-}
+  // Movimenta peça
+  function movePiece(from, to) {
+    const fromSquare = document.querySelector(`.square[data-index="${from}"]`);
+    const toSquare = document.querySelector(`.square[data-index="${to}"]`);
+    if (fromSquare.textContent === currentPlayer && toSquare.textContent === "") {
+      toSquare.textContent = fromSquare.textContent;
+      fromSquare.textContent = "";
+      switchTurn();
+    }
+  }
 
-function resetBorders() {
-  document.querySelectorAll('.square').forEach(sq => {
-    sq.style.border = 'none';
+  // Lógica de clique
+  board.addEventListener("click", (e) => {
+    if (!e.target.classList.contains("square")) return;
+
+    const index = parseInt(e.target.dataset.index);
+
+    if (selectedPiece === null) {
+      if (e.target.textContent === currentPlayer) {
+        selectedPiece = index;
+        e.target.classList.add("selected");
+      }
+    } else {
+      document.querySelector(`.square[data-index="${selectedPiece}"]`).classList.remove("selected");
+      movePiece(selectedPiece, index);
+      selectedPiece = null;
+    }
   });
-}
 
-function updateTurnIndicator() {
-  turnIndicator.textContent = `Turno: ${currentTurn === 'white' ? 'Brancas' : 'Pretas'}`;
-}
-
-function triggerScareMessage() {
-  const scareMessages = [
-    "Você sente uma presença sombria...",
-    "A Samara está mais perto!",
-    "Algo te observa no escuro...",
-    "Um sussurro arrepiante ecoa...",
-    "O relógio para de funcionar por um segundo..."
-  ];
-  const message = scareMessages[Math.floor(Math.random() * scareMessages.length)];
-  messageText.textContent = message;
-  messageBox.style.display = 'block';
-}
-
-function initListeners() {
-  board.addEventListener('click', handleSquareClick);
-
-  continueButton.addEventListener('click', () => {
-    messageBox.style.display = 'none';
+  // Botão Continuar
+  continueBtn.addEventListener("click", () => {
+    const name = playerNameInput.value.trim();
+    if (name !== "") {
+      modal.classList.add("hidden");
+      gameBoard.classList.remove("hidden");
+      createBoard();
+      updateTurnIndicator();
+    }
   });
-}
-
-window.onload = () => {
-  createBoard();
-  initListeners();
-  updateTurnIndicator();
-};
+});

@@ -1,78 +1,102 @@
-const board = document.getElementById("board");
-const turnIndicator = document.getElementById("turn-indicator");
-let selectedSquare = null;
-let currentPlayer = "white";
+let selectedPiece = null;
+let selectedIndex = null;
+let currentTurn = 'white';
 
-const initialBoard = [
-  ["♜", "♞", "♝", "♛", "♚", "♝", "♞", "♜"],
-  ["♟", "♟", "♟", "♟", "♟", "♟", "♟", "♟"],
-  ["", "", "", "", "", "", "", ""],
-  ["", "", "", "", "", "", "", ""],
-  ["", "", "", "", "", "", "", ""],
-  ["", "", "", "", "", "", "", ""],
-  ["♙", "♙", "♙", "♙", "♙", "♙", "♙", "♙"],
-  ["♖", "♘", "♗", "♕", "♔", "♗", "♘", "♖"],
+const board = document.getElementById('board');
+const turnIndicator = document.getElementById('turn-indicator');
+const messageBox = document.getElementById('message-box');
+const messageText = document.getElementById('message-text');
+const continueButton = document.getElementById('continue-button');
+
+const pieces = [
+  "♜","♞","♝","♛","♚","♝","♞","♜",
+  "♟","♟","♟","♟","♟","♟","♟","♟",
+  "","","","","","","","",
+  "","","","","","","","",
+  "","","","","","","","",
+  "","","","","","","","",
+  "♙","♙","♙","♙","♙","♙","♙","♙",
+  "♖","♘","♗","♕","♔","♗","♘","♖"
 ];
-
-function updateTurnIndicator() {
-  turnIndicator.textContent = `Turno: ${currentPlayer === "white" ? "Branco" : "Preto"}`;
-}
 
 function createBoard() {
   board.innerHTML = "";
-  for (let row = 0; row < 8; row++) {
-    for (let col = 0; col < 8; col++) {
-      const square = document.createElement("div");
-      square.classList.add("square");
-      square.classList.add((row + col) % 2 === 0 ? "white" : "black");
-      square.dataset.row = row;
-      square.dataset.col = col;
-      square.textContent = initialBoard[row][col];
-      board.appendChild(square);
-    }
+  for (let i = 0; i < 64; i++) {
+    const square = document.createElement('div');
+    square.classList.add('square');
+    square.classList.add((Math.floor(i / 8) + i) % 2 === 0 ? 'white' : 'black');
+    square.dataset.index = i;
+    square.innerHTML = pieces[i];
+    board.appendChild(square);
   }
 }
 
 function handleSquareClick(e) {
-  const square = e.target.closest(".square");
-  if (!square) return;
+  const square = e.target;
+  if (!square.classList.contains('square')) return;
 
-  const row = +square.dataset.row;
-  const col = +square.dataset.col;
-  const piece = initialBoard[row][col];
+  const index = parseInt(square.dataset.index);
+  const piece = pieces[index];
 
-  const isWhitePiece = "♙♖♘♗♕♔".includes(piece);
-  const isBlackPiece = "♟♜♞♝♛♚".includes(piece);
-
-  if (
-    (currentPlayer === "white" && isWhitePiece) ||
-    (currentPlayer === "black" && isBlackPiece)
-  ) {
-    if (selectedSquare) selectedSquare.classList.remove("selected");
-    selectedSquare = square;
-    square.classList.add("selected");
-  } else if (selectedSquare) {
-    movePiece(selectedSquare, square);
-    selectedSquare.classList.remove("selected");
-    selectedSquare = null;
+  if (selectedPiece === null) {
+    if (
+      (currentTurn === 'white' && "♙♖♘♗♕♔".includes(piece)) ||
+      (currentTurn === 'black' && "♟♜♞♝♛♚".includes(piece))
+    ) {
+      selectedPiece = piece;
+      selectedIndex = index;
+      square.style.border = '2px solid yellow';
+    }
+  } else {
+    movePiece(selectedIndex, index);
+    selectedPiece = null;
+    selectedIndex = null;
+    resetBorders();
+    updateTurnIndicator();
   }
 }
 
 function movePiece(from, to) {
-  const fromRow = +from.dataset.row;
-  const fromCol = +from.dataset.col;
-  const toRow = +to.dataset.row;
-  const toCol = +to.dataset.col;
-
-  initialBoard[toRow][toCol] = initialBoard[fromRow][fromCol];
-  initialBoard[fromRow][fromCol] = "";
+  pieces[to] = pieces[from];
+  pieces[from] = "";
   createBoard();
-  updateTurnIndicator();
-  currentPlayer = currentPlayer === "white" ? "black" : "white";
+  triggerScareMessage();
+  currentTurn = currentTurn === 'white' ? 'black' : 'white';
 }
 
-board.addEventListener("click", handleSquareClick);
+function resetBorders() {
+  document.querySelectorAll('.square').forEach(sq => {
+    sq.style.border = 'none';
+  });
+}
 
-createBoard();
-updateTurnIndicator();
+function updateTurnIndicator() {
+  turnIndicator.textContent = `Turno: ${currentTurn === 'white' ? 'Brancas' : 'Pretas'}`;
+}
 
+function triggerScareMessage() {
+  const scareMessages = [
+    "Você sente uma presença sombria...",
+    "A Samara está mais perto!",
+    "Algo te observa no escuro...",
+    "Um sussurro arrepiante ecoa...",
+    "O relógio para de funcionar por um segundo..."
+  ];
+  const message = scareMessages[Math.floor(Math.random() * scareMessages.length)];
+  messageText.textContent = message;
+  messageBox.style.display = 'block';
+}
+
+function initListeners() {
+  board.addEventListener('click', handleSquareClick);
+
+  continueButton.addEventListener('click', () => {
+    messageBox.style.display = 'none';
+  });
+}
+
+window.onload = () => {
+  createBoard();
+  initListeners();
+  updateTurnIndicator();
+};

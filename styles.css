@@ -1,31 +1,26 @@
 body {
-  font-family: Arial, sans-serif;
+  background-color: black;
+  color: white;
+  font-family: 'Arial', sans-serif;
   text-align: center;
-  background-color: #f8f8f8;
-}
-
-#turn-indicator {
-  margin-bottom: 10px;
-  font-weight: bold;
-  font-size: 20px;
 }
 
 #board {
   display: grid;
   grid-template-columns: repeat(8, 60px);
   grid-template-rows: repeat(8, 60px);
-  width: fit-content;
-  margin: auto;
-  border: 2px solid black;
+  width: 480px;
+  margin: 20px auto;
+  border: 3px solid white;
 }
 
 .square {
   width: 60px;
   height: 60px;
   display: flex;
-  justify-content: center;
   align-items: center;
-  font-size: 28px;
+  justify-content: center;
+  font-size: 30px;
   cursor: pointer;
 }
 
@@ -34,11 +29,32 @@ body {
 }
 
 .black {
-  background-color: #666;
+  background-color: #444;
   color: white;
 }
 
-.selected {
-  outline: 3px solid red;
+#message-box {
+  display: none;
+  position: fixed;
+  top: 30%;
+  left: 50%;
+  transform: translate(-50%, -30%);
+  background: rgba(0, 0, 0, 0.95);
+  padding: 30px;
+  border: 3px solid red;
+  z-index: 1000;
 }
 
+#continue-button {
+  margin-top: 15px;
+  padding: 10px 20px;
+  background-color: red;
+  color: white;
+  border: none;
+  cursor: pointer;
+}
+
+#turn-indicator {
+  margin-top: 10px;
+  font-weight: bold;
+}

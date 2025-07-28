@@ -2,20 +2,22 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Xadrez vs Samara</title>
-  <link rel="stylesheet" href="styles.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tabuleiro de Guerra</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <h1>Xadrez vs Samara</h1>
+  <div id="nameModal" class="modal">
+    <div class="modal-content">
+      <h2>Como devo chama-lo ?</h2>
+      <input type="text" id="playerName" placeholder="Digite seu nome..." />
+      <button id="continueBtn">Continuar</button>
+    </div>
+  </div>
 
-  <div id="turn-indicator">Turno: Brancas</div>
-
-  <div id="board"></div>
-
-  <div id="message-box">
-    <p id="message-text">Mensagem de susto ou turno!</p>
-    <button id="continue-button">Continuar</button>
+  <div id="gameBoard" class="hidden">
+    <h3 id="turnIndicator"></h3>
+    <div id="board" class="board"></div>
   </div>
 
   <script src="script.js"></script>

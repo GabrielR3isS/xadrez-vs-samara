@@ -7,6 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -145,6 +146,9 @@
                 </div>
                 <div id="board" class="board"></div>
                 <div class="flex space-x-4 mt-2">
+                     <button id="sound-toggle-button" class="px-4 py-3 bg-gray-500 text-white font-semibold rounded-lg shadow-md hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-75 transition-colors">
+                        <i id="sound-icon" class="fas fa-volume-high"></i>
+                    </button>
                     <button id="hint-button" class="px-6 py-3 bg-teal-500 text-white font-semibold rounded-lg shadow-md hover:bg-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-opacity-75 transition-colors">
                         Pedir Dica ✨
                     </button>
@@ -192,6 +196,8 @@
         const hintModal = document.getElementById('hint-modal');
         const hintText = document.getElementById('hint-text');
         const closeHintModalButton = document.getElementById('close-hint-modal');
+        const soundToggleButton = document.getElementById('sound-toggle-button');
+        const soundIcon = document.getElementById('sound-icon');
         
         const selectionView = document.getElementById('selection-view');
         const gameView = document.getElementById('game-view');
@@ -215,6 +221,44 @@
         let capturedByWhite = [];
         let capturedByBlack = [];
         let promotionState = null;
+        let soundsEnabled = true;
+
+        // --- SISTEMA DE SOM (Tone.js) ---
+        let sounds = {};
+
+        function setupSounds() {
+            sounds.move = new Tone.Synth({ oscillator: { type: 'sine' }, envelope: { attack: 0.005, decay: 0.1, sustain: 0.3, release: 1 } }).toDestination();
+            sounds.capture = new Tone.Synth({ oscillator: { type: 'triangle' }, envelope: { attack: 0.005, decay: 0.2, sustain: 0.2, release: 1 } }).toDestination();
+            sounds.check = new Tone.Synth({ oscillator: { type: 'sawtooth' }, envelope: { attack: 0.01, decay: 0.1, sustain: 0.1, release: 0.5 } }).toDestination();
+            sounds.gameOver = new Tone.PolySynth(Tone.Synth).toDestination();
+        }
+
+        function playSound(sound) {
+            if (!soundsEnabled || !Tone.context.state === 'running') return;
+            try {
+                switch (sound) {
+                    case 'move': sounds.move.triggerAttackRelease('C4', '8n'); break;
+                    case 'capture': sounds.capture.triggerAttackRelease('E3', '8n'); break;
+                    case 'check': sounds.check.triggerAttackRelease('G5', '16n'); break;
+                    case 'gameOver': 
+                        const now = Tone.now();
+                        sounds.gameOver.triggerAttackRelease(['C5', 'E5', 'G5'], '8n', now);
+                        sounds.gameOver.triggerAttackRelease(['G4'], '8n', now + 0.2);
+                        break;
+                }
+            } catch(e) {
+                console.error("Erro ao tocar som com Tone.js:", e);
+            }
+        }
+        
+        soundToggleButton.addEventListener('click', () => {
+            soundsEnabled = !soundsEnabled;
+            soundIcon.className = soundsEnabled ? 'fas fa-volume-high' : 'fas fa-volume-xmark';
+             if (soundsEnabled && Tone.context.state !== 'running') {
+                Tone.start();
+            }
+        });
+
 
         // --- DEFINIÇÃO DAS PEÇAS ---
         const PIECES = {
@@ -224,6 +268,9 @@
 
         // --- FUNÇÕES PRINCIPAIS DE GESTÃO DO JOGO ---
         function startGame(chosenColor) {
+            if (Tone.context.state !== 'running') {
+                Tone.start();
+            }
             playerColor = chosenColor;
             selectionView.classList.add('hidden');
             gameView.classList.remove('hidden');
@@ -250,6 +297,7 @@
             renderBoard();
             renderCapturedPieces();
             updateGameStatus();
+            updateTurnIndicator();
             
             if (currentPlayer !== playerColor) {
                 triggerAITurn();
@@ -258,6 +306,7 @@
 
         function renderBoard() {
             boardElement.innerHTML = '';
+            // Passamos a cor do REI que pode estar em xeque
             const kingInCheckPos = findKingInCheckPosition(currentPlayer);
 
             for (let row = 0; row < 8; row++) {
@@ -324,64 +373,61 @@
             }
         }
         
-        function switchTurn() {
-             currentPlayer = (currentPlayer === 'white') ? 'black' : 'white';
-             lastMove.from = null;
-             lastMove.to = null;
-        }
-
-        function endPlayerTurn() {
+        // **NOVA LÓGICA CENTRALIZADA DE GESTÃO DE TURNO**
+        function processEndOfTurn() {
             resetSelection();
-            if (updateGameStatus()) return; // Check for mate/stalemate
-            
+            // 1. Troca o jogador
             currentPlayer = (currentPlayer === 'white') ? 'black' : 'white';
-            triggerAITurn();
+
+            // 2. Atualiza o estado do jogo para o NOVO jogador
+            isGameOver = updateGameStatus();
+            updateTurnIndicator();
+
+            // 3. Se o jogo não acabou e é a vez da IA, ela joga
+            if (!isGameOver && currentPlayer !== playerColor) {
+                triggerAITurn();
+            }
         }
         
         function triggerAITurn() {
-            updateTurnIndicator();
             document.body.classList.add('thinking');
-            
             setTimeout(async () => {
                 const aiMove = await getAIMove();
                 if (aiMove) {
                     movePiece(aiMove.from.row, aiMove.from.col, aiMove.to.row, aiMove.to.col);
-                } else {
-                    // This can happen if AI has no moves (checkmate/stalemate)
-                    console.log("A Samara não tem movimentos legais.");
                 }
-                
                 document.body.classList.remove('thinking');
-                
-                if (updateGameStatus()) return;
-                
-                currentPlayer = (currentPlayer === 'white') ? 'black' : 'white';
-                updateTurnIndicator();
-            }, 100);
+            }, 200);
         }
 
         // --- LÓGICA DE ESTADO DO JOGO (XEQUE, XEQUE-MATE) ---
         function updateGameStatus() {
+            // Esta função agora verifica o estado para o 'currentPlayer'
             const isInCheck = isKingInCheck(currentPlayer, boardState);
             const hasMoves = hasAnyLegalMove(currentPlayer, boardState);
 
             if (isInCheck && !hasMoves) {
-                isGameOver = true;
                 const winner = currentPlayer === 'white' ? 'Samara (Pretas)' : 'Você (Brancas)';
                 displayMessage(`XEQUE-MATE! Vitória de ${winner}!`);
-            } else if (!isInCheck && !hasMoves) {
-                isGameOver = true;
+                playSound('gameOver');
+                boardElement.classList.add('game-over');
+                return true; // Jogo acabou
+            }
+            if (!isInCheck && !hasMoves) {
                 displayMessage('EMPATE por Rei Afogado!');
-            } else if (isInCheck) {
+                playSound('gameOver');
+                boardElement.classList.add('game-over');
+                return true; // Jogo acabou
+            }
+            if (isInCheck) {
                 displayMessage('XEQUE!');
+                playSound('check');
             } else {
                 displayMessage('');
             }
 
-            if(isGameOver) boardElement.classList.add('game-over');
-            updateTurnIndicator();
-            renderBoard(); // Re-render to show check highlight
-            return isGameOver;
+            renderBoard(); // Re-render para mostrar/remover highlight de xeque
+            return false; // Jogo continua
         }
         
         function findKingPosition(color, board) {
@@ -391,7 +437,7 @@
                     if (board[r][c] === kingChar) return { row: r, col: c };
                 }
             }
-            return null; // Should not happen in a normal game
+            return null; 
         }
 
         function findKingInCheckPosition(color) {
@@ -457,36 +503,32 @@
             const pieceToMove = boardState[fromRow][fromCol];
             const capturedPiece = boardState[toRow][toCol];
             if (capturedPiece) {
+                playSound('capture');
                 const capturedColor = PIECES[capturedPiece].color;
                 if(capturedColor === 'white') capturedByBlack.push(capturedPiece);
                 else capturedByWhite.push(capturedPiece);
                 renderCapturedPieces();
+            } else {
+                playSound('move');
             }
 
             boardState[toRow][toCol] = pieceToMove;
             boardState[fromRow][fromCol] = null;
             lastMove = { from: { row: fromRow, col: fromCol }, to: { row: toRow, col: toCol } };
             
-            // Lógica de Promoção de Peão
             const isPawn = pieceToMove.toLowerCase() === 'p';
             const isLastRank = (PIECES[pieceToMove].color === 'white' && toRow === 0) || (PIECES[pieceToMove].color === 'black' && toRow === 7);
 
             if (isPawn && isLastRank) {
                 promotionState = { row: toRow, col: toCol };
                 showPromotionDialog(PIECES[pieceToMove].color);
-                renderBoard(); // renderiza o peão na última casa antes de promover
-                return; // Pausa o fluxo, espera a escolha da promoção
+                renderBoard(); 
+                return; // Pausa o fluxo para aguardar a escolha
             }
             
-            // Lógica normal de fim de turno
-            const isPlayerTurn = currentPlayer === playerColor;
-            resetSelection();
-            if (isPlayerTurn) {
-                endPlayerTurn();
-            }
+            processEndOfTurn(); // A nova função é chamada aqui
         }
         
-        // --- PROMOÇÃO DE PEÃO ---
         function showPromotionDialog(color) {
             promotionModal.classList.remove('hidden');
             promotionOptions.innerHTML = '';
@@ -507,11 +549,7 @@
                 promotionState = null;
                 promotionModal.classList.add('hidden');
                 
-                const isPlayerTurn = currentPlayer === playerColor;
-                resetSelection();
-                if (isPlayerTurn) {
-                    endPlayerTurn();
-                }
+                processEndOfTurn(); // Continua o fluxo do jogo após a promoção
             }
         }
 
@@ -539,11 +577,7 @@
             messageLog.textContent = msg;
         }
 
-        // --- LÓGICA DA IA ---
-
         async function getAIMove() {
-            // A IA agora usa a lógica de movimentos válidos que já considera xeque.
-            // A IA simples vai funcionar de forma mais inteligente sem alterações.
             const allLegalMoves = [];
             const aiColor = (playerColor === 'white') ? 'black' : 'white';
             for(let r=0; r<8; r++) {
@@ -560,20 +594,15 @@
             }
 
             if(allLegalMoves.length === 0) return null;
-
             const capturingMoves = allLegalMoves.filter(move => boardState[move.to.row][move.to.col] !== null);
             if(capturingMoves.length > 0) {
                  return capturingMoves[Math.floor(Math.random() * capturingMoves.length)];
             }
-
             return allLegalMoves[Math.floor(Math.random() * allLegalMoves.length)];
         }
         
-        async function getHintFromAI() {
-            // ... (A lógica da dica permanece a mesma por enquanto)
-        }
+        async function getHintFromAI() { /* ... Lógica da Dica ... */ }
 
-        // --- LÓGICA DE MOVIMENTO DAS PEÇAS (GET VALID MOVES, ETC.) ---
         function getValidMoves(row, col, piece, board) {
             const pseudoMoves = getPseudoLegalMoves(row, col, piece, board);
             const legalMoves = [];
@@ -590,7 +619,7 @@
             return legalMoves;
         }
 
-        function getPseudoLegalMoves(row, col, piece, board) { // Raw moves, doesn't check for check
+        function getPseudoLegalMoves(row, col, piece, board) {
             const type = piece.toLowerCase();
             switch (type) {
                 case 'p': return getPawnMoves(row, col, piece, board);
@@ -689,6 +718,9 @@
         hintButton.addEventListener('click', getHintFromAI);
         closeHintModalButton.addEventListener('click', () => hintModal.classList.add('hidden'));
         boardElement.addEventListener('click', handleSquareClick);
+        
+        // --- INICIALIZAÇÃO ---
+        setupSounds();
 
     </script>
 </body>

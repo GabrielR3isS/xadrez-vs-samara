@@ -1,79 +1,567 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>O Início da Revolução</title>
-  <style>
-    body {
-      margin: 0;
-      padding: 0;
-      background: linear-gradient(to right, #0f0c29, #302b63, #24243e);
-      color: white;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      flex-direction: column;
-      text-align: center;
-    }
-
-    h1 {
-      font-size: 3em;
-      margin-bottom: 20px;
-      animation: fadeIn 2s ease-in-out;
-    }
-
-    p {
-      font-size: 1.2em;
-      animation: fadeIn 4s ease-in-out;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(20px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    button {
-      margin-top: 30px;
-      padding: 15px 30px;
-      font-size: 1em;
-      background-color: #4a3ff2;
-      border: none;
-      border-radius: 8px;
-      color: white;
-      cursor: pointer;
-      transition: background-color 0.3s;
-    }
-
-    button:hover {
-      background-color: #322bd1;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jogo de Xadrez vs Samara</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            touch-action: manipulation;
+        }
+        .board {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            grid-template-rows: repeat(8, 1fr);
+            width: 90vw;
+            height: 90vw;
+            max-width: 70vh;
+            max-height: 70vh;
+            border: 2px solid #374151; /* gray-700 */
+            border-radius: 0.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .square {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: clamp(20px, 6vw, 50px);
+            position: relative;
+        }
+        .light { background-color: #F3F4F6; } /* gray-100 */
+        .dark { background-color: #6B7280; } /* gray-500 */
+        .piece {
+            cursor: pointer;
+            transition: transform 0.1s ease-in-out;
+        }
+        .piece.white { color: #ffffff; text-shadow: 0 0 3px black, 0 0 3px black; }
+        .piece.black { color: #111827; } /* gray-900 */
+        .selected {
+            background-color: #FBBF24 !important; /* amber-400 */
+        }
+        .valid-move-dot {
+            position: absolute;
+            width: 30%;
+            height: 30%;
+            background-color: rgba(251, 191, 36, 0.7);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+        .capture-hint {
+            position: absolute;
+            width: 90%;
+            height: 90%;
+            border: 4px solid rgba(239, 68, 68, 0.6);
+            border-radius: 50%;
+            box-sizing: border-box;
+            pointer-events: none;
+        }
+        .thinking, .hint-loading {
+            cursor: wait;
+        }
+        .game-over .square {
+            cursor: not-allowed;
+        }
+        .hidden {
+            display: none;
+        }
+        /* Modal Styles */
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+    </style>
 </head>
-<body>
-  <h1>Bem-vindo à Revolução</h1>
-  <p>Prepare-se para a batalha... O destino da nação está em suas mãos.</p>
-  <button onclick="playEfeito()">Avançar</button>
+<body class="bg-gray-200 flex flex-col items-center justify-center min-h-screen p-4">
 
-  <audio id="musicaFundo" src="https://cdn.pixabay.com/download/audio/2022/10/26/audio_80f879b2c2.mp3?filename=epic-trailer-121355.mp3" autoplay loop></audio>
-  <audio id="efeitoClique" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_1d4db3c2fd.mp3?filename=click-124467.mp3"></audio>
+    <div id="selection-view" class="text-center">
+        <h1 id="selection-title" class="text-3xl font-bold text-gray-800 mb-8">Jogo de Xadrez vs Samara</h1>
+        <h2 class="text-xl font-semibold text-gray-700 mb-6">Escolha a sua cor para começar:</h2>
+        <div class="flex flex-col sm:flex-row gap-4 justify-center">
+            <button id="play-white-button" class="px-8 py-4 bg-gray-100 text-gray-800 font-bold rounded-lg shadow-md hover:bg-white transition-colors text-2xl border-2 border-gray-300">
+                <i class="fas fa-chess-king" style="color: #4A5568;"></i> Brancas
+            </button>
+            <button id="play-black-button" class="px-8 py-4 bg-gray-800 text-white font-bold rounded-lg shadow-md hover:bg-gray-900 transition-colors text-2xl border-2 border-gray-600">
+                <i class="fas fa-chess-king"></i> Pretas
+            </button>
+        </div>
+    </div>
 
-  <script>
-    const efeitoClique = document.getElementById("efeitoClique");
-    const musicaFundo = document.getElementById("musicaFundo");
+    <div id="game-view" class="hidden flex flex-col items-center gap-4">
+        <div id="info-panel" class="w-full max-w-md bg-white p-4 rounded-lg shadow-md text-center">
+            <h1 id="game-title" class="text-2xl font-bold text-gray-800">Jogo de Xadrez vs Samara</h1>
+            <p id="turn-indicator" class="text-lg font-semibold mt-2 text-gray-600">Vez das: Brancas</p>
+            <p id="message-log" class="text-sm text-red-600 h-5 mt-1"></p>
+        </div>
 
-    function playEfeito() {
-      efeitoClique.play();
-      alert("Você avançou para o próximo capítulo!");
-      // Aqui pode mudar de tela ou iniciar algo
-    }
+        <div id="board" class="board"></div>
 
-    // Em alguns navegadores, é necessário interação antes de tocar áudio
-    window.addEventListener("click", () => {
-      musicaFundo.play().catch(() => {});
-    });
-  </script>
+        <div class="flex space-x-4">
+            <button id="hint-button" class="px-6 py-3 bg-teal-500 text-white font-semibold rounded-lg shadow-md hover:bg-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-opacity-75 transition-colors">
+                Pedir Dica ✨
+            </button>
+            <button id="reset-button" class="px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-75 transition-colors">
+                Voltar ao Menu
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal para Dicas da IA -->
+    <div id="hint-modal" class="modal-backdrop hidden">
+        <div class="modal-content">
+            <h3 class="text-xl font-bold mb-4 text-gray-800">Dica da Samara ✨</h3>
+            <div id="hint-text" class="text-gray-600">A pensar...</div>
+            <button id="close-hint-modal" class="mt-6 w-full px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700">Fechar</button>
+        </div>
+    </div>
+
+
+    <script>
+        // --- ELEMENTOS DO DOM ---
+        const boardElement = document.getElementById('board');
+        const turnIndicator = document.getElementById('turn-indicator');
+        const messageLog = document.getElementById('message-log');
+        const resetButton = document.getElementById('reset-button');
+        const hintButton = document.getElementById('hint-button');
+        const hintModal = document.getElementById('hint-modal');
+        const hintText = document.getElementById('hint-text');
+        const closeHintModalButton = document.getElementById('close-hint-modal');
+        
+        const selectionView = document.getElementById('selection-view');
+        const gameView = document.getElementById('game-view');
+        const playWhiteButton = document.getElementById('play-white-button');
+        const playBlackButton = document.getElementById('play-black-button');
+
+        // --- ESTADO DO JOGO ---
+        let boardState = [];
+        let currentPlayer = 'white';
+        let playerColor = 'white';
+        let selectedPiece = null;
+        let validMoves = [];
+        let isGameOver = false;
+
+        // --- DEFINIÇÃO DAS PEÇAS ---
+        const PIECES = {
+            'r': { name: 'Torre', icon: 'fa-solid fa-chess-rook', color: 'black' }, 'n': { name: 'Cavalo', icon: 'fa-solid fa-chess-knight', color: 'black' }, 'b': { name: 'Bispo', icon: 'fa-solid fa-chess-bishop', color: 'black' }, 'q': { name: 'Rainha', icon: 'fa-solid fa-chess-queen', color: 'black' }, 'k': { name: 'Rei', icon: 'fa-solid fa-chess-king', color: 'black' }, 'p': { name: 'Peão', icon: 'fa-solid fa-chess-pawn', color: 'black' },
+            'R': { name: 'Torre', icon: 'fa-solid fa-chess-rook', color: 'white' }, 'N': { name: 'Cavalo', icon: 'fa-solid fa-chess-knight', color: 'white' }, 'B': { name: 'Bispo', icon: 'fa-solid fa-chess-bishop', color: 'white' }, 'Q': { name: 'Rainha', icon: 'fa-solid fa-chess-queen', color: 'white' }, 'K': { name: 'Rei', icon: 'fa-solid fa-chess-king', color: 'white' }, 'P': { name: 'Peão', icon: 'fa-solid fa-chess-pawn', color: 'white' },
+        };
+
+        // --- FUNÇÕES PRINCIPAIS DE GESTÃO DO JOGO ---
+        function startGame(chosenColor) {
+            playerColor = chosenColor;
+            selectionView.classList.add('hidden');
+            gameView.classList.remove('hidden');
+            initializeGame();
+        }
+
+        function initializeGame() {
+            boardState = [
+                ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'], ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+                [null, null, null, null, null, null, null, null], [null, null, null, null, null, null, null, null],
+                [null, null, null, null, null, null, null, null], [null, null, null, null, null, null, null, null],
+                ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'], ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+            ];
+            currentPlayer = 'white';
+            selectedPiece = null;
+            validMoves = [];
+            isGameOver = false;
+            boardElement.classList.remove('game-over');
+            document.body.classList.remove('thinking');
+            renderBoard();
+            displayMessage('');
+            
+            if (currentPlayer !== playerColor) {
+                triggerAITurn();
+            } else {
+                updateTurnIndicator();
+            }
+        }
+
+        function renderBoard() {
+            boardElement.innerHTML = '';
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    const square = document.createElement('div');
+                    square.dataset.row = row;
+                    square.dataset.col = col;
+                    const isLight = (row + col) % 2 === 0;
+                    square.className = `square ${isLight ? 'light' : 'dark'}`;
+                    const pieceChar = boardState[row][col];
+                    if (pieceChar) {
+                        const pieceInfo = PIECES[pieceChar];
+                        const pieceElement = document.createElement('i');
+                        pieceElement.className = `piece ${pieceInfo.icon} ${pieceInfo.color}`;
+                        square.appendChild(pieceElement);
+                    }
+                    boardElement.appendChild(square);
+                }
+            }
+            highlightValidMoves();
+        }
+
+        function handleSquareClick(e) {
+            if (isGameOver || currentPlayer !== playerColor) return;
+
+            const square = e.target.closest('.square');
+            if (!square) return;
+
+            const row = parseInt(square.dataset.row);
+            const col = parseInt(square.dataset.col);
+            const pieceChar = boardState[row][col];
+            const pieceColor = pieceChar ? PIECES[pieceChar].color : null;
+
+            if (selectedPiece) {
+                const isValidMove = validMoves.some(move => move.row === row && move.col === col);
+                if (isValidMove) {
+                    movePiece(selectedPiece.row, selectedPiece.col, row, col);
+                    resetSelection();
+                    endPlayerTurn();
+                } else if (pieceColor === playerColor) {
+                    selectPiece(row, col);
+                } else {
+                    resetSelection();
+                }
+            } else if (pieceColor === playerColor) {
+                selectPiece(row, col);
+            }
+        }
+
+        function endPlayerTurn() {
+            if (checkGameOver()) return;
+            currentPlayer = (currentPlayer === 'white') ? 'black' : 'white';
+            triggerAITurn();
+        }
+        
+        function triggerAITurn() {
+            updateTurnIndicator();
+            document.body.classList.add('thinking');
+            
+            setTimeout(async () => {
+                const aiMove = await getAIMove();
+                if (aiMove) {
+                    movePiece(aiMove.from.row, aiMove.from.col, aiMove.to.row, aiMove.to.col);
+                }
+                
+                document.body.classList.remove('thinking');
+                
+                if (checkGameOver()) return;
+                
+                currentPlayer = (currentPlayer === 'white') ? 'black' : 'white';
+                updateTurnIndicator();
+
+            }, 100);
+        }
+
+        function checkGameOver() {
+            let whiteKingFound = false;
+            let blackKingFound = false;
+            for (const row of boardState) {
+                for (const piece of row) {
+                    if (piece === 'K') whiteKingFound = true;
+                    if (piece === 'k') blackKingFound = true;
+                }
+            }
+
+            if (!blackKingFound) {
+                isGameOver = true;
+                turnIndicator.textContent = `Rei Preto capturado! Vitória das Brancas!`;
+            } else if (!whiteKingFound) {
+                isGameOver = true;
+                turnIndicator.textContent = 'Rei Branco capturado! Vitória da Samara!';
+            }
+
+            if (isGameOver) {
+                boardElement.classList.add('game-over');
+                displayMessage("Fim de Jogo! Clique em 'Voltar ao Menu' para jogar novamente.");
+            }
+            return isGameOver;
+        }
+
+        function selectPiece(row, col) {
+            resetSelection();
+            selectedPiece = { row, col, piece: boardState[row][col] };
+            validMoves = getValidMoves(row, col, selectedPiece.piece);
+            const squareElement = boardElement.querySelector(`[data-row='${row}'][data-col='${col}']`);
+            squareElement.classList.add('selected');
+            highlightValidMoves();
+            displayMessage('');
+        }
+
+        function resetSelection() {
+            selectedPiece = null;
+            validMoves = [];
+            document.querySelectorAll('.square.selected').forEach(s => s.classList.remove('selected'));
+            document.querySelectorAll('.valid-move-dot, .capture-hint').forEach(dot => dot.remove());
+        }
+
+        function movePiece(fromRow, fromCol, toRow, toCol) {
+            const piece = boardState[fromRow][fromCol];
+            boardState[toRow][toCol] = piece;
+            boardState[fromRow][fromCol] = null;
+            renderBoard();
+        }
+
+        function updateTurnIndicator() {
+            if (isGameOver) return;
+            const turnText = (currentPlayer === playerColor) ? `É a sua vez` : "Vez da Samara";
+            const turnColorName = (currentPlayer === 'white') ? 'Brancas' : 'Pretas';
+            turnIndicator.textContent = `${turnText} (${turnColorName})`;
+        }
+
+        function highlightValidMoves() {
+            document.querySelectorAll('.valid-move-dot, .capture-hint').forEach(dot => dot.remove());
+            validMoves.forEach(move => {
+                const square = boardElement.querySelector(`[data-row='${move.row}'][data-col='${move.col}']`);
+                if (square) {
+                    const isCapture = boardState[move.row][move.col] !== null;
+                    const hint = document.createElement('div');
+                    hint.className = isCapture ? 'capture-hint' : 'valid-move-dot';
+                    square.appendChild(hint);
+                }
+            });
+        }
+        
+        function displayMessage(msg) {
+            messageLog.textContent = msg;
+        }
+
+        // --- LÓGICA DA API GEMINI E IA ---
+
+        async function getAIMove() {
+            displayMessage('Samara está a pensar...');
+            try {
+                const boardString = formatBoardForPrompt();
+                const aiColorName = (playerColor === 'white') ? 'pretas' : 'brancas';
+                const aiPieceCase = (playerColor === 'white') ? 'minúsculas' : 'maiúsculas';
+                const playerColorName = (playerColor === 'white') ? 'brancas' : 'pretas';
+                const playerPieceCase = (playerColor === 'white') ? 'maiúsculas' : 'minúsculas';
+
+                const prompt = `Você é Samara, uma grande mestra de xadrez. Você está a jogar com as peças ${aiColorName} (letras ${aiPieceCase}). O seu oponente joga com as peças ${playerColorName} (letras ${playerPieceCase}). O estado do tabuleiro é:\n${boardString}\nÉ a sua vez de jogar com as peças ${aiColorName}. Analise a posição e devolva a sua melhor jogada LEGAL. Você SÓ PODE mover uma peça da sua cor (${aiColorName}). Use estritamente coordenadas de array (linhas e colunas de 0 a 7).`;
+                
+                const schema = {
+                    type: "OBJECT",
+                    properties: {
+                        from: { type: "OBJECT", properties: { row: { type: "INTEGER" }, col: { type: "INTEGER" } } },
+                        to: { type: "OBJECT", properties: { row: { type: "INTEGER" }, col: { type: "INTEGER" } } },
+                        explanation: { type: "STRING" }
+                    },
+                    required: ["from", "to", "explanation"]
+                };
+
+                const resultJson = await callGemini(prompt, schema);
+                const move = JSON.parse(resultJson);
+                
+                if (!move || !move.from || typeof move.from.row !== 'number' || !isInBounds(move.from.row, move.from.col)) throw new Error("Resposta da IA malformada (posição 'from').");
+                if (!move.to || typeof move.to.row !== 'number' || !isInBounds(move.to.row, move.to.col)) throw new Error("Resposta da IA malformada (posição 'to').");
+
+                const piece = boardState[move.from.row][move.from.col];
+                if (!piece || PIECES[piece].color === playerColor) throw new Error("A IA tentou mover uma peça do jogador.");
+
+                const possibleMoves = getValidMoves(move.from.row, move.from.col, piece);
+                if (possibleMoves.some(m => m.row === move.to.row && m.col === move.to.col)) {
+                    return move;
+                } else {
+                    throw new Error("A IA sugeriu um movimento ilegal.");
+                }
+            } catch (error) {
+                console.error("Erro da Samara, a usar IA simples:", error);
+                displayMessage('Samara teve um problema, a usar uma estratégia mais simples.');
+            }
+            return getSimpleAIMove();
+        }
+
+        function getSimpleAIMove() {
+            const allPossibleMoves = [];
+            const aiColor = (playerColor === 'white') ? 'black' : 'white';
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    const piece = boardState[r][c];
+                    if (piece && PIECES[piece].color === aiColor) {
+                        const moves = getValidMoves(r, c, piece);
+                        moves.forEach(move => allPossibleMoves.push({ from: { row: r, col: c }, to: move }));
+                    }
+                }
+            }
+            if (allPossibleMoves.length === 0) return null;
+            const capturingMoves = allPossibleMoves.filter(move => boardState[move.to.row][move.to.col]);
+            return capturingMoves.length > 0 ? capturingMoves[Math.floor(Math.random() * capturingMoves.length)] : allPossibleMoves[Math.floor(Math.random() * allPossibleMoves.length)];
+        }
+        
+        async function getHintFromAI() {
+            if (currentPlayer !== playerColor || isGameOver) {
+                alert("Não pode pedir uma dica agora.");
+                return;
+            }
+            hintButton.disabled = true;
+            document.body.classList.add('hint-loading');
+            hintModal.classList.remove('hidden');
+            hintText.textContent = "A Samara está a analisar o tabuleiro...";
+
+            const boardString = formatBoardForPrompt();
+            const prompt = `Você é Samara, uma mestra de xadrez. O estado atual do tabuleiro é:\n${boardString}\nÉ a vez das peças ${playerColor}s. Qual é a melhor jogada estratégica para as ${playerColor}s e porquê? Explique de forma concisa.`;
+            
+            try {
+                const resultText = await callGemini(prompt);
+                hintText.innerHTML = resultText.replace(/\n/g, '<br>');
+            } catch (error) {
+                console.error("Erro ao obter dica da IA:", error);
+                hintText.textContent = "Desculpe, não foi possível obter uma dica neste momento.";
+            } finally {
+                hintButton.disabled = false;
+                document.body.classList.remove('hint-loading');
+            }
+        }
+
+        function formatBoardForPrompt() {
+            let boardString = "  a b c d e f g h\n";
+            for (let row = 0; row < 8; row++) {
+                boardString += (8 - row) + " ";
+                for (let col = 0; col < 8; col++) {
+                    const piece = boardState[row][col];
+                    boardString += (piece || '.') + " ";
+                }
+                boardString += (8 - row) + "\n";
+            }
+            boardString += "  a b c d e f g h\n";
+            return boardString;
+        }
+
+        async function callGemini(prompt, schema = null) {
+            const apiKey = ""; 
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+            const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
+            if (schema) {
+                payload.generationConfig = { responseMimeType: "application/json", responseSchema: schema };
+            }
+            const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            if (!response.ok) throw new Error(`Erro na API: ${response.statusText}`);
+            const result = await response.json();
+            if (result.candidates?.[0]?.content?.parts?.[0]?.text) {
+                return result.candidates[0].content.parts[0].text;
+            }
+            throw new Error("Resposta da API inválida ou vazia.");
+        }
+
+        // --- LÓGICA DE MOVIMENTO DAS PEÇAS ---
+        function getValidMoves(row, col, piece) {
+            const type = piece.toLowerCase();
+            switch (type) {
+                case 'p': return getPawnMoves(row, col, piece);
+                case 'r': return getRookMoves(row, col, piece);
+                case 'n': return getKnightMoves(row, col, piece);
+                case 'b': return getBishopMoves(row, col, piece);
+                case 'q': return getQueenMoves(row, col, piece);
+                case 'k': return getKingMoves(row, col, piece);
+                default: return [];
+            }
+        }
+        function getPawnMoves(row, col, piece) {
+            const moves = [];
+            const color = PIECES[piece].color;
+            const direction = color === 'white' ? -1 : 1;
+            const startRow = color === 'white' ? 6 : 1;
+            if (isInBounds(row + direction, col) && !boardState[row + direction][col]) {
+                moves.push({ row: row + direction, col });
+                if (row === startRow && !boardState[row + 2 * direction][col]) {
+                    moves.push({ row: row + 2 * direction, col });
+                }
+            }
+            const captureCols = [col - 1, col + 1];
+            captureCols.forEach(c => {
+                if (isInBounds(row + direction, c)) {
+                    const targetPiece = boardState[row + direction][c];
+                    if (targetPiece && PIECES[targetPiece].color !== color) {
+                        moves.push({ row: row + direction, col: c });
+                    }
+                }
+            });
+            return moves;
+        }
+        function getRookMoves(row, col, piece) { return getSlidingMoves(row, col, piece, [[-1, 0], [1, 0], [0, -1], [0, 1]]); }
+        function getBishopMoves(row, col, piece) { return getSlidingMoves(row, col, piece, [[-1, -1], [-1, 1], [1, -1], [1, 1]]); }
+        function getQueenMoves(row, col, piece) { return getSlidingMoves(row, col, piece, [[-1, 0], [1, 0], [0, -1], [0, 1], [-1, -1], [-1, 1], [1, -1], [1, 1]]); }
+        function getSlidingMoves(row, col, piece, directions) {
+            const moves = [];
+            const color = PIECES[piece].color;
+            directions.forEach(([dRow, dCol]) => {
+                for (let i = 1; i < 8; i++) {
+                    const newRow = row + i * dRow;
+                    const newCol = col + i * dCol;
+                    if (!isInBounds(newRow, newCol)) break;
+                    const targetPiece = boardState[newRow][newCol];
+                    if (targetPiece) {
+                        if (PIECES[targetPiece].color !== color) { moves.push({ row: newRow, col: newCol }); }
+                        break;
+                    }
+                    moves.push({ row: newRow, col: newCol });
+                }
+            });
+            return moves;
+        }
+        function getKnightMoves(row, col, piece) {
+            const moves = [];
+            const color = PIECES[piece].color;
+            const knightMoves = [[-2, -1], [-2, 1], [-1, -2], [-1, 2], [1, -2], [1, 2], [2, -1], [2, 1]];
+            knightMoves.forEach(([dRow, dCol]) => {
+                const newRow = row + dRow;
+                const newCol = col + dCol;
+                if (isInBounds(newRow, newCol)) {
+                    const targetPiece = boardState[newRow][newCol];
+                    if (!targetPiece || PIECES[targetPiece].color !== color) {
+                        moves.push({ row: newRow, col: newCol });
+                    }
+                }
+            });
+            return moves;
+        }
+        function getKingMoves(row, col, piece) {
+            const moves = [];
+            const color = PIECES[piece].color;
+            const kingMoves = [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]];
+            kingMoves.forEach(([dRow, dCol]) => {
+                const newRow = row + dRow;
+                const newCol = col + dCol;
+                if (isInBounds(newRow, newCol)) {
+                    const targetPiece = boardState[newRow][newCol];
+                    if (!targetPiece || PIECES[targetPiece].color !== color) {
+                        moves.push({ row: newRow, col: newCol });
+                    }
+                }
+            });
+            return moves;
+        }
+        function isInBounds(row, col) { return row >= 0 && row < 8 && col >= 0 && col < 8; }
+
+        // --- EVENT LISTENERS ---
+        playWhiteButton.addEventListener('click', () => startGame('white'));
+        playBlackButton.addEventListener('click', () => startGame('black'));
+        resetButton.addEventListener('click', () => {
+            gameView.classList.add('hidden');
+            selectionView.classList.remove('hidden');
+        });
+        hintButton.addEventListener('click', getHintFromAI);
+        closeHintModalButton.addEventListener('click', () => hintModal.classList.add('hidden'));
+        boardElement.addEventListener('click', handleSquareClick);
+
+    </script>
 </body>
 </html>
